@@ -7,7 +7,7 @@ module.exports = (req, res, next) => {
   try {
     const { role } = jwt.verify(token, process.env.ACCESS_TOKEN_SEC);
 
-    if (!role) res.status(401).send("Unauthorized");
+    if (role !== "admin") res.status(401).send("Unauthorized");
 
     next();
   } catch (err) {
