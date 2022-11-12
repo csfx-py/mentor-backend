@@ -15,12 +15,22 @@ const UserSchema = new mongoose.Schema({
     type: String,
     required: true,
   },
-  Posts: [
+  posts: [
     {
       type: mongoose.Schema.Types.ObjectId,
       ref: "Post",
     },
   ],
+  followingTags: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tag",
+    },
+  ],
+  profilePicture: {
+    type: String,
+    default: "",
+  },
   role: {
     type: String,
     default: "user",
