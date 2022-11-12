@@ -2,15 +2,34 @@ require("dotenv").config();
 
 const PORT = process.env.PORT || 5000;
 
-const app = require("express")();
+const express = require("express");
+const app = express();
 const cors = require("cors");
 const morgan = require("morgan");
 const mongoose = require("mongoose");
+const cookieParser = require("cookie-parser");
+
+const authRoute = require("./routes/Auth");
+const postsRoute = require("./routes/Posts");
 
 const dev = true;
 
-app.use(cors());
+app.use(
+  cors(
+    dev
+      ? {
+          origin: "http://localhost:3000",
+          credentials: true,
+        }
+      : {
+          origin: "https://www.example.com",
+          credentials: true,
+        }
+  )
+);
 app.use(morgan("dev"));
+app.use(express.json());
+app.use(cookieParser());
 
 // connect mongodb
 mongoose.connect(
@@ -28,6 +47,9 @@ mongoose.connect(
 app.get("/", (req, res) => {
   res.send("Hello");
 });
+
+app.use("/auth", authRoute);
+app.use("/posts", postsRoute);
 
 app.listen(PORT, () => {
   console.log(`listening at http://localhost:${PORT}`);
