@@ -1,27 +1,30 @@
 const router = require("express").Router();
 const bcrypt = require("bcrypt");
 const createToken = require("../utils/createToken");
+const jwt = require("jsonwebtoken");
 
 const User = require("../models/User");
 
 // Register
 router.post("/register", async (req, res) => {
   try {
+    // console.log(req);
     const { name, email, password } = req.body;
+    // console.log(name, email, password);
 
     // Simple validation
     if (!name || !email || !password)
-      return res.status(400).json({ message: "Please enter all fields" });
+      throw new Error("Please enter all fields");
 
     // Check for existing user
     const user = await User.findOne({ email });
-    if (user) return res.status(400).json({ message: "User already exists" });
+    if (user) throw Error("User already exists");
 
     const salt = await bcrypt.genSalt(10);
-    if (!salt) throw Error("Something went wrong with bcrypt");
+    if (!salt) throw Error("Something went wrong with password encryption");
 
     const hash = await bcrypt.hash(password, salt);
-    if (!hash) throw Error("Something went wrong hashing the password");
+    if (!hash) throw Error("Something went wrong with password encryption");
 
     const newUser = new User({
       name,
@@ -35,16 +38,21 @@ router.post("/register", async (req, res) => {
     const token = createToken(savedUser, process.env.ACCESS_TOKEN_SEC, "168h");
 
     res
-      .status(200)
-      .json({
-        token,
-        message: "User registered successfully",
-      })
       .cookie("token", token, {
         httpOnly: true,
+      })
+      .status(200)
+      .json({
+        success: true,
+        token,
+        message: "User registered successfully",
       });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    // console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
@@ -53,30 +61,117 @@ router.post("/login", async (req, res) => {
     const { email, password } = req.body;
 
     // Simple validation
-    if (!email || !password)
-      return res.status(400).json({ message: "Please enter all fields" });
+    if (!email || !password) throw new Error("Please enter all fields");
 
     // Check for existing user
     const user = await User.findOne({ email });
-    if (!user) return res.status(400).json({ message: "User does not exist" });
+    if (!user) throw Error("User does not exist. Please register to continue");
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch)
-      return res.status(400).json({ message: "Invalid credentials" });
+      throw Error("Invalid credentials. Please check your email and password");
 
     const token = createToken(user, process.env.ACCESS_TOKEN_SEC, "168h");
 
     res
-      .status(200)
-      .json({
-        token,
-        message: "User logged in successfully",
-      })
       .cookie("token", token, {
         httpOnly: true,
+      })
+      .status(200)
+      .json({
+        success: true,
+        token,
+        message: "User logged in successfully",
       });
   } catch (err) {
-    res.status(400).json({ message: err.message });
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/refresh", async (req, res) => {
+  try {
+    const token = req.cookies.token;
+    if (!token) throw Error("No token found");
+
+    const verified = jwt.verify(token, process.env.ACCESS_TOKEN_SEC);
+    if (!verified) throw Error("Token verification failed");
+
+    const user = await User.findById(verified._id);
+    if (!user) throw Error("User does not exist");
+
+    const newToken = createToken(user, process.env.ACCESS_TOKEN_SEC, "168h");
+
+    res
+      .cookie("token", newToken, {
+        httpOnly: true,
+      })
+      .status(200)
+      .json({
+        success: true,
+        token: newToken,
+        message: "Token refreshed successfully",
+      });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/logout", async (req, res) => {
+  try {
+    res
+      .cookie("token", "", {
+        httpOnly: true,
+        expires: new Date(0),
+      })
+      .status(200)
+      .json({
+        success: true,
+        message: "User logged out successfully",
+      });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/user", async (req, res) => {
+  try {
+    const token = req.cookies.token;
+    if (!token) throw Error("No token found");
+
+    const verified = jwt.verify(token, process.env.ACCESS_TOKEN_SEC);
+    if (!verified) throw Error("Token verification failed");
+
+    const user = await User.findById(verified._id);
+    if (!user) throw Error("User does not exist");
+
+    // remove password from response
+    const { _id, name, email, posts } = user._doc;
+
+    res.status(200).json({
+      success: true,
+      user: {
+        _id,
+        name,
+        email,
+        posts,
+      },
+      message: "User fetched successfully",
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
   }
 });
 
