@@ -11,5 +11,10 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+if (app) {
+  console.log("Firebase app initialized");
+} else {
+  console.log("Firebase app failed to initialize");
+}
 
 module.exports = app;
