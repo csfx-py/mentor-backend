@@ -103,14 +103,23 @@ router.get("/get-all-files", async (req, res) => {
     // get all files from firebase storage id folders
     const files = await Promise.all(
       userIds.map(async (userId) => {
-        const listRef = ref(storage, userId);
+        const id = userId.toString();
+        const listRef = ref(storage, id);
         const list = await listAll(listRef);
-        return list.items.map((item) => {
-          return {
-            name: item.name,
-            url: item.fullPath,
-          };
-        });
+
+        const files = await Promise.all(
+          list.items.map(async (itemRef) => {
+            const url = await getDownloadURL(itemRef);
+            return {
+              userId: id,
+              url,
+              name: itemRef.name,
+              t: itemRef.name.split("-")[0],
+            };
+          })
+        );
+
+        return files[0];
       })
     );
 
@@ -119,6 +128,36 @@ router.get("/get-all-files", async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Post created successfully",
+    });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/get-all-posts", async (req, res) => {
+  try {
+    const posts = await Post.find();
+    if (!posts) throw new Error("No posts found");
+
+    // add username to each post
+    const postsWithUser = await Promise.all(
+      posts.map(async (post) => {
+        const user = await User.findById(post.user);
+        if (!user) throw new Error("User not found");
+
+        return {
+          ...post._doc,
+          name: user.name,
+        };
+      })
+    );
+
+    res.status(200).json({
+      success: true,
+      posts: postsWithUser,
     });
   } catch (err) {
     res.status(400).json({
