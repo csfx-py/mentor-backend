@@ -35,6 +35,10 @@ const UserSchema = new mongoose.Schema({
     type: String,
     default: "user",
   },
+  isOnboarded: {
+    type: Boolean,
+    default: false,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
