@@ -155,7 +155,7 @@ router.get("/user", async (req, res) => {
     if (!user) throw Error("User does not exist");
 
     // remove password from response
-    const { _id, name, email, posts } = user._doc;
+    const { _id, name, email, posts, followingTags } = user._doc;
 
     res.status(200).json({
       success: true,
@@ -163,6 +163,7 @@ router.get("/user", async (req, res) => {
         _id,
         name,
         email,
+        followingTags,
         posts,
       },
       message: "User fetched successfully",
