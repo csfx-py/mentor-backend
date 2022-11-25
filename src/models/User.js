@@ -27,7 +27,7 @@ const UserSchema = new mongoose.Schema({
       ref: "Tag",
     },
   ],
-  profilePicture: {
+  avatar: {
     type: String,
     default: "",
   },
