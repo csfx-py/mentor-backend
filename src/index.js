@@ -11,6 +11,7 @@ const cookieParser = require("cookie-parser");
 
 const authRoute = require("./routes/Auth");
 const postsRoute = require("./routes/Posts");
+const userRoute = require("./routes/User");
 
 const dev = true;
 
@@ -49,6 +50,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRoute);
+app.use("/user", userRoute);
 app.use("/posts", postsRoute);
 
 app.listen(PORT, () => {
