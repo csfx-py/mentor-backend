@@ -1,4 +1,4 @@
-# Backend for mentor space project that manages api for auth and serve hotel menu using express/mongoose
+# Backend for mentor space project that manages api for auth and serve using express/mongoose
 
 ## Clone app
 
