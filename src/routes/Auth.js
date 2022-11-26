@@ -8,9 +8,7 @@ const User = require("../models/User");
 // Register
 router.post("/register", async (req, res) => {
   try {
-    // console.log(req);
     const { name, email, password } = req.body;
-    // console.log(name, email, password);
 
     // Simple validation
     if (!name || !email || !password)
@@ -135,39 +133,6 @@ router.get("/logout", async (req, res) => {
         success: true,
         message: "User logged out successfully",
       });
-  } catch (err) {
-    res.status(400).json({
-      success: false,
-      message: err.message,
-    });
-  }
-});
-
-router.get("/user", async (req, res) => {
-  try {
-    const token = req.cookies.token;
-    if (!token) throw Error("No token found");
-
-    const verified = jwt.verify(token, process.env.ACCESS_TOKEN_SEC);
-    if (!verified) throw Error("Token verification failed");
-
-    const user = await User.findById(verified._id);
-    if (!user) throw Error("User does not exist");
-
-    // remove password from response
-    const { _id, name, email, posts, followingTags } = user._doc;
-
-    res.status(200).json({
-      success: true,
-      user: {
-        _id,
-        name,
-        email,
-        followingTags,
-        posts,
-      },
-      message: "User fetched successfully",
-    });
   } catch (err) {
     res.status(400).json({
       success: false,

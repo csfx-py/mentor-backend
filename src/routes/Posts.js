@@ -1,11 +1,12 @@
 const router = require("express").Router();
+const verifyUser = require("../utils/verifyUser");
 const app = require("../config/firebase_config");
 const {
   getStorage,
   ref,
-  listAll,
   uploadBytes,
   getDownloadURL,
+  deleteObject,
 } = require("firebase/storage");
 
 const storage = getStorage(app);
@@ -19,7 +20,7 @@ const Post = require("../models/Post");
 const Tag = require("../models/Tag");
 
 // get all tags
-router.get("/tags", async (req, res) => {
+router.get("/tags", verifyUser, async (req, res) => {
   try {
     const tags = await Tag.find();
     if (!tags) throw Error("No tags found");
@@ -40,21 +41,36 @@ router.get("/tags", async (req, res) => {
 });
 
 // get all posts
-router.get("/get-all-posts", async (req, res) => {
+router.get("/get-all-posts", verifyUser, async (req, res) => {
   try {
     const { followingTags } = req.query;
     const tagIds = JSON.parse(followingTags);
 
+    console.log(tagIds);
     const tags = await Tag.find({
       _id: {
         $in: tagIds,
       },
     });
+    console.log(tags);
 
     const tagNames = tags.map((tag) => tag.name);
 
-    const posts = await Post.find({ tags: { $in: tagNames } });
-    if (!posts) throw new Error("No posts found");
+    console.log(tagNames);
+    // find posts by current user and including the tags
+    const posts = await Post.find({
+      $or: [
+        {
+          user: req.reqUser._id,
+        },
+        {
+          tags: {
+            $in: tagNames,
+          },
+        },
+      ],
+    }).sort({ createdAt: -1 });
+    if (!posts.length) throw new Error("No posts found");
 
     // add username to each post
     const postsWithUser = await Promise.all(
@@ -83,7 +99,7 @@ router.get("/get-all-posts", async (req, res) => {
 });
 
 // Create a post with multiple pdf files
-router.post("/create", upload.array("files"), async (req, res) => {
+router.post("/create", verifyUser, upload.array("files"), async (req, res) => {
   try {
     const { description, tags, user } = req.body;
     const files = req.files;
@@ -101,6 +117,7 @@ router.post("/create", upload.array("files"), async (req, res) => {
         return {
           name: file.originalname,
           url: downloadUrl,
+          fileName: `${user}/${t}-${file.originalname}`,
           t,
         };
       })
@@ -137,8 +154,55 @@ router.post("/create", upload.array("files"), async (req, res) => {
   }
 });
 
+router.delete("/delete", verifyUser, async (req, res) => {
+  try {
+    const { postId } = req.body;
+
+    const post = await Post.findById(postId);
+    if (!post) throw new Error("Post not found");
+
+    // delete the files from firebase storage
+    await Promise.all(
+      post.files.map(async (file) => {
+        console.log(file.fileName);
+        const storageRef = ref(storage, `${file.fileName}`);
+        if (storageRef) {
+          await deleteObject(storageRef);
+        } else {
+          throw new Error("File not found");
+        }
+      })
+    );
+
+    // delete the post from mongodb
+    const deletedPost = await Post.deleteOne({ _id: postId });
+    if (!deletedPost) throw new Error("Something went wrong deleting the post");
+
+    // delete the post from the user's posts
+    const user = await User.findById(post.user);
+    if (!user) throw new Error("User not found");
+
+    user.posts = user.posts.filter((post) => post.toString() !== postId);
+
+    const savedUser = await user.save();
+    if (!savedUser)
+      throw new Error("Something went wrong deleting post from the user");
+
+    res.status(200).json({
+      success: true,
+      message: "Post deleted successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 // route to add comment
-router.post("/add-comment", async (req, res) => {
+router.post("/add-comment", verifyUser, async (req, res) => {
   try {
     const { postId, text, user, name, avatar, date } = req.body;
 
