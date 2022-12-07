@@ -18,6 +18,7 @@ const upload = multer({
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Tag = require("../models/Tag");
+const getPostInfo = require("../utils/getPostInfo");
 
 // get all tags
 router.get("/tags", verifyUser, async (req, res) => {
@@ -46,17 +47,14 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
     const { followingTags } = req.query;
     const tagIds = JSON.parse(followingTags);
 
-    console.log(tagIds);
     const tags = await Tag.find({
       _id: {
         $in: tagIds,
       },
     });
-    console.log(tags);
 
     const tagNames = tags.map((tag) => tag.name);
 
-    console.log(tagNames);
     // find posts by current user and including the tags
     const posts = await Post.find({
       $or: [
@@ -72,18 +70,7 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
     }).sort({ createdAt: -1 });
     if (!posts.length) throw new Error("No posts found");
 
-    // add username to each post
-    const postsWithUser = await Promise.all(
-      posts.map(async (post) => {
-        const user = await User.findById(post.user);
-        if (!user) throw new Error("User not found");
-
-        return {
-          ...post._doc,
-          name: user.name,
-        };
-      })
-    );
+    const postsWithUser = await getPostInfo(posts);
 
     res.status(200).json({
       success: true,
@@ -225,6 +212,59 @@ router.post("/add-comment", verifyUser, async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Comment added successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.delete("/delete-comment", verifyUser, async (req, res) => {
+  try {
+    const { postId, commentId } = req.body;
+
+    const post = await Post.findById(postId);
+    if (!post) throw new Error("Post not found");
+
+    post.comments = post.comments.filter(
+      (comment) => comment._id.toString() !== commentId
+    );
+
+    const savedPost = await post.save();
+    if (!savedPost) throw new Error("Something went wrong saving the post");
+
+    res.status(200).json({
+      success: true,
+      message: "Comment deleted successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/search", verifyUser, async (req, res) => {
+  try {
+    const { query } = req.query;
+
+    const posts = await Post.find({
+      $or: [
+        { description: { $regex: query, $options: "i" } },
+        { tags: { $regex: query, $options: "i" } },
+      ],
+    });
+
+    const postsWithUser = await getPostInfo(posts);
+
+    res.status(200).json({
+      success: true,
+      posts: postsWithUser,
     });
   } catch (err) {
     console.log(err);
