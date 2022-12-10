@@ -8,7 +8,8 @@ const PostSchema = new mongoose.Schema({
   },
   tags: [
     {
-      type: String,
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Tag",
     },
   ],
   user: {
@@ -33,14 +34,8 @@ const PostSchema = new mongoose.Schema({
   ],
   likes: [
     {
-      user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: "User",
-      },
-      num: {
-        type: Number,
-        default: 0,
-      },
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "User",
     },
   ],
   comments: [
@@ -53,13 +48,7 @@ const PostSchema = new mongoose.Schema({
         type: String,
         required: true,
       },
-      name: {
-        type: String,
-      },
-      avatar: {
-        type: String,
-      },
-      date: {
+      createdAt: {
         type: Date,
         default: Date.now,
       },
