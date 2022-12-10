@@ -6,7 +6,7 @@ module.exports = (user, secret, exp) => {
     {
       _id,
       name,
-      role
+      role,
     },
     secret,
     { expiresIn: exp }
