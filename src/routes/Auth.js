@@ -2,6 +2,7 @@ const router = require("express").Router();
 const bcrypt = require("bcrypt");
 const createToken = require("../utils/createToken");
 const jwt = require("jsonwebtoken");
+const verifyUser = require("../utils/verifyUser");
 
 const User = require("../models/User");
 
@@ -133,6 +134,39 @@ router.get("/logout", async (req, res) => {
         success: true,
         message: "User logged out successfully",
       });
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.put("/password", verifyUser, async (req, res) => {
+  try {
+    const { oldPassword, newPassword } = req.body;
+
+    const user = await User.findOne({ _id: req.reqUser._id });
+    if (!user) throw Error("User does not exist");
+
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) throw Error("Invalid credentials");
+
+    const salt = await bcrypt.genSalt(10);
+    if (!salt) throw Error("Something went wrong with password encryption");
+
+    const hash = await bcrypt.hash(newPassword, salt);
+    if (!hash) throw Error("Something went wrong with password encryption");
+
+    user.password = hash;
+    const savedUser = await user.save();
+
+    if (!savedUser) throw Error("Something went wrong saving the user");
+
+    res.status(200).json({
+      success: true,
+      message: "Password updated successfully",
+    });
   } catch (err) {
     res.status(400).json({
       success: false,
