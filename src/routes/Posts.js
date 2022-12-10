@@ -26,12 +26,9 @@ router.get("/tags", verifyUser, async (req, res) => {
     const tags = await Tag.find();
     if (!tags) throw Error("No tags found");
 
-    const tagNames = tags.map((tag) => tag.name);
-    if (!tagNames) throw Error("No tags found");
-
     res.status(200).json({
       success: true,
-      tags: tagNames,
+      tags,
     });
   } catch (err) {
     res.status(400).json({
@@ -44,18 +41,9 @@ router.get("/tags", verifyUser, async (req, res) => {
 // get all posts
 router.get("/get-all-posts", verifyUser, async (req, res) => {
   try {
-    const { followingTags } = req.query;
-    const tagIds = JSON.parse(followingTags);
+    const followingTags = JSON.parse(req.query.followingTags);
+    if (!followingTags) throw Error("No tags found");
 
-    const tags = await Tag.find({
-      _id: {
-        $in: tagIds,
-      },
-    });
-
-    const tagNames = tags.map((tag) => tag.name);
-
-    // find posts by current user and including the tags
     const posts = await Post.find({
       $or: [
         {
@@ -63,18 +51,21 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
         },
         {
           tags: {
-            $in: tagNames,
+            $in: followingTags,
           },
         },
       ],
-    }).sort({ createdAt: -1 });
+    })
+      .sort({ createdAt: -1 })
+      .populate("user", ["name", "avatar"])
+      .populate("tags", ["name"])
+      .populate("comments.user", ["name", "avatar"])
+      .populate("likes", ["name", "avatar"]);
     if (!posts.length) throw new Error("No posts found");
-
-    const postsWithUser = await getPostInfo(posts);
 
     res.status(200).json({
       success: true,
-      posts: postsWithUser,
+      posts,
     });
   } catch (err) {
     console.log(err);
@@ -124,6 +115,7 @@ router.post("/create", verifyUser, upload.array("files"), async (req, res) => {
 
     // add the post to the user's posts
     userDoc.posts.push(savedPost._id);
+
     const savedUser = await userDoc.save();
     if (!savedUser)
       throw new Error("Something went wrong saving post to the user");
@@ -258,13 +250,65 @@ router.get("/search", verifyUser, async (req, res) => {
         { description: { $regex: query, $options: "i" } },
         { tags: { $regex: query, $options: "i" } },
       ],
-    });
-
-    const postsWithUser = await getPostInfo(posts);
+    })
+      .sort({ createdAt: -1 })
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"])
+      .populate("likes.user", ["name", "avatar"]);
+    if (!posts) throw new Error("Posts not found");
 
     res.status(200).json({
       success: true,
       posts: postsWithUser,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/get-my-posts", verifyUser, async (req, res) => {
+  try {
+    const user = req.reqUser._id;
+
+    const posts = await Post.find({ user })
+      .sort({ createdAt: -1 })
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"])
+      .populate("tags", ["name"])
+      .populate("likes.user", ["name", "avatar"]);
+    if (!posts) throw new Error("Posts not found");
+
+    res.status(200).json({
+      success: true,
+      posts,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/get-user-posts", verifyUser, async (req, res) => {
+  try {
+    const { userId } = req.query;
+
+    const posts = await Post.find({ user: userId })
+      .sort({ createdAt: -1 })
+      .populate("user", ["name", "avatar"])
+      .populate("comments.user", ["name", "avatar"])
+      .populate("likes.user", ["name", "avatar"]);
+    if (!posts) throw new Error("Posts not found");
+
+    res.status(200).json({
+      success: true,
+      posts,
     });
   } catch (err) {
     console.log(err);
