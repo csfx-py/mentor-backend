@@ -19,7 +19,7 @@ const verifyUser = require("../utils/verifyUser");
 
 router.get("/user", verifyUser, async (req, res) => {
   try {
-    const user = await User.findById(req.reqUser._id);
+    const user = await User.findById(req.reqUser._id).populate("followingTags");
     if (!user) throw Error("User does not exist");
 
     // remove password from response
@@ -35,7 +35,7 @@ router.get("/user", verifyUser, async (req, res) => {
         posts,
         avatar,
       },
-      message: "User fetched successfully",
+      message: "User fetch successfully",
     });
   } catch (err) {
     res.status(400).json({
@@ -55,7 +55,10 @@ router.post(
       if (!file) throw Error("No file found");
       const extension = file.originalname.split(".").pop();
 
-      const storageRef = ref(storage, `avatars/${req.reqUser._id}.${extension}`);
+      const storageRef = ref(
+        storage,
+        `avatars/${req.reqUser._id}.${extension}`
+      );
 
       const uploadTask = uploadBytes(storageRef, file.buffer);
 
@@ -68,7 +71,7 @@ router.post(
         { _id: req.reqUser._id },
         { avatar: downloadURL },
         { new: true }
-      );
+      ).populate("followingTags");
       if (!user) throw Error("User does not exist");
 
       const { _id, name, email, posts, followingTags, avatar } = user._doc;
@@ -93,5 +96,39 @@ router.post(
     }
   }
 );
+
+router.put("/user", verifyUser, async (req, res) => {
+  try {
+    const { name, email, followingTags } = req.body.details;
+
+    const user = await User.findOneAndUpdate(
+      { _id: req.reqUser._id },
+      { name, email, followingTags },
+      { new: true }
+    ).populate("followingTags");
+    if (!user) throw Error("User does not exist");
+
+    const userDoc = user._doc;
+
+    res.status(200).json({
+      success: true,
+      message: "User updated successfully",
+      user: {
+        _id: userDoc._id,
+        name: userDoc.name,
+        email: userDoc.email,
+        followingTags: userDoc.followingTags,
+        posts: userDoc.posts,
+        avatar: userDoc.avatar,
+      },
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
 
 module.exports = router;
