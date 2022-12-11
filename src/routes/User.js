@@ -16,25 +16,16 @@ const upload = multer({
 
 const User = require("../models/User");
 const verifyUser = require("../utils/verifyUser");
+const getUserReturnInfo = require("../utils/getUserReturnInfo");
 
 router.get("/user", verifyUser, async (req, res) => {
   try {
     const user = await User.findById(req.reqUser._id).populate("followingTags");
     if (!user) throw Error("User does not exist");
 
-    // remove password from response
-    const { _id, name, email, posts, followingTags, avatar } = user._doc;
-
     res.status(200).json({
       success: true,
-      user: {
-        _id,
-        name,
-        email,
-        followingTags,
-        posts,
-        avatar,
-      },
+      user: getUserReturnInfo(user._doc),
       message: "User fetch successfully",
     });
   } catch (err) {
@@ -74,19 +65,10 @@ router.post(
       ).populate("followingTags");
       if (!user) throw Error("User does not exist");
 
-      const { _id, name, email, posts, followingTags, avatar } = user._doc;
-
       res.status(200).json({
         success: true,
         message: "Avatar uploaded successfully",
-        user: {
-          _id,
-          name,
-          email,
-          followingTags,
-          posts,
-          avatar,
-        },
+        user: getUserReturnInfo(user._doc),
       });
     } catch (err) {
       res.status(400).json({
@@ -108,19 +90,10 @@ router.put("/user", verifyUser, async (req, res) => {
     ).populate("followingTags");
     if (!user) throw Error("User does not exist");
 
-    const userDoc = user._doc;
-
     res.status(200).json({
       success: true,
       message: "User updated successfully",
-      user: {
-        _id: userDoc._id,
-        name: userDoc.name,
-        email: userDoc.email,
-        followingTags: userDoc.followingTags,
-        posts: userDoc.posts,
-        avatar: userDoc.avatar,
-      },
+      user: getUserReturnInfo(user._doc),
     });
   } catch (err) {
     console.log(err);
