@@ -111,6 +111,7 @@ router.get("/refresh", async (req, res) => {
       .json({
         success: true,
         token: newToken,
+        role: user.role,
         message: "Token refreshed successfully",
       });
   } catch (err) {
