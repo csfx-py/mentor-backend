@@ -18,7 +18,6 @@ const upload = multer({
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Tag = require("../models/Tag");
-const getPostInfo = require("../utils/getPostInfo");
 
 // get all tags
 router.get("/tags", verifyUser, async (req, res) => {
@@ -61,7 +60,6 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
       .populate("tags", ["name"])
       .populate("comments.user", ["name", "avatar"])
       .populate("likes", ["name", "avatar"]);
-    if (!posts.length) throw new Error("No posts found");
 
     res.status(200).json({
       success: true,
@@ -113,13 +111,6 @@ router.post("/create", verifyUser, upload.array("files"), async (req, res) => {
     const savedPost = await post.save();
     if (!savedPost) throw new Error("Something went wrong saving the post");
 
-    // add the post to the user's posts
-    userDoc.posts.push(savedPost._id);
-
-    const savedUser = await userDoc.save();
-    if (!savedUser)
-      throw new Error("Something went wrong saving post to the user");
-
     res.status(200).json({
       success: true,
       message: "Post created successfully",
@@ -156,16 +147,6 @@ router.delete("/delete", verifyUser, async (req, res) => {
     // delete the post from mongodb
     const deletedPost = await Post.deleteOne({ _id: postId });
     if (!deletedPost) throw new Error("Something went wrong deleting the post");
-
-    // delete the post from the user's posts
-    const user = await User.findById(post.user);
-    if (!user) throw new Error("User not found");
-
-    user.posts = user.posts.filter((post) => post.toString() !== postId);
-
-    const savedUser = await user.save();
-    if (!savedUser)
-      throw new Error("Something went wrong deleting post from the user");
 
     res.status(200).json({
       success: true,
