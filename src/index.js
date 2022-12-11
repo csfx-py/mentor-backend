@@ -22,7 +22,7 @@ app.use(
   cors(
     dev
       ? {
-          origin: "http://localhost:3000",
+          origin: ["http://localhost:3000", "http://localhost:3100"],
           credentials: true,
         }
       : {

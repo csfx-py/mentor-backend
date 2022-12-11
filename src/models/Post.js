@@ -64,4 +64,28 @@ const PostSchema = new mongoose.Schema({
   },
 });
 
+// pre delete middleware remove refs from User
+PostSchema.pre("deleteOne", async function (next) {
+  const post = await this.model.findOne(this.getQuery());
+  const User = require("./User");
+  await User.updateOne({ _id: post.user }, { $pull: { posts: post._id } });
+  next();
+});
+
+// pre save middleware save new refs to User
+PostSchema.pre("save", async function (next) {
+  const User = require("./User");
+  await User.updateOne({ _id: this.user }, { $addToSet: { posts: this._id } });
+  next();
+});
+
+// post update middleware if post has no tags then delete document
+PostSchema.post("updateMany", async function (next) {
+  const post = await this.model.findOne(this.getQuery());
+
+  if (post.tags.length === 0) {
+    await this.model.deleteOne({ _id: post._id });
+  }
+});
+
 module.exports = mongoose.model("Post", PostSchema);
