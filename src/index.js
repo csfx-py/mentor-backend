@@ -13,6 +13,7 @@ const morgan = require("morgan");
 const mongoose = require("mongoose");
 
 const authRoute = require("./routes/Auth");
+const adminRoutes = require("./routes/Admin");
 const postsRoute = require("./routes/Posts");
 const userRoute = require("./routes/User");
 
@@ -22,7 +23,7 @@ app.use(
   cors(
     dev
       ? {
-          origin: ["http://localhost:3000", "http://localhost:3100"],
+          origin: ["http://localhost:3000"],
           credentials: true,
         }
       : {
@@ -31,7 +32,7 @@ app.use(
         }
   )
 );
-app.use(morgan("dev"));
+app.use(morgan("tiny"));
 app.use(express.json());
 app.use(cookieParser());
 
@@ -53,6 +54,7 @@ app.get("/", (req, res) => {
 });
 
 app.use("/auth", authRoute);
+app.use("/admin", adminRoutes);
 app.use("/user", userRoute);
 app.use("/posts", postsRoute);
 
