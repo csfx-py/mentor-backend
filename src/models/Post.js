@@ -66,25 +66,56 @@ const PostSchema = new mongoose.Schema({
 
 // pre delete middleware remove refs from User
 PostSchema.pre("deleteOne", async function (next) {
-  const post = await this.model.findOne(this.getQuery());
-  const User = require("./User");
-  await User.updateOne({ _id: post.user }, { $pull: { posts: post._id } });
-  next();
+  try {
+    const User = require("./User");
+    const post = await this.model.findOne(this.getQuery());
+
+    await User.updateOne({ _id: post.user }, { $pull: { posts: post._id } });
+
+    next();
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
 });
 
 // pre save middleware save new refs to User
 PostSchema.pre("save", async function (next) {
-  const User = require("./User");
-  await User.updateOne({ _id: this.user }, { $addToSet: { posts: this._id } });
-  next();
+  try {
+    const User = require("./User");
+    const post = this;
+
+    await User.updateOne({ _id: post.user }, { $push: { posts: post._id } });
+
+    next();
+  } catch (err) {
+    console.log(err);
+    next(err);
+  }
 });
 
 // post update middleware if post has no tags then delete document
 PostSchema.post("updateMany", async function (next) {
-  const post = await this.model.findOne(this.getQuery());
+  try {
+    await this.model.deleteMany({ tags: { $size: 0 } });
+  } catch (err) {
+    console.log(err);
+  }
+});
 
-  if (post.tags.length === 0) {
-    await this.model.deleteOne({ _id: post._id });
+PostSchema.pre("deleteMany", async function (next) {
+  try {
+    const User = require("./User");
+    const posts = await this.model.find(this.getQuery());
+
+    for (let post of posts) {
+      await User.updateOne({ _id: post.user }, { $pull: { posts: post._id } });
+    }
+
+    next();
+  } catch (err) {
+    console.log(err);
+    next(err);
   }
 });
 
