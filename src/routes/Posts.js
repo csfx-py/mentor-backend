@@ -80,6 +80,15 @@ router.post("/create", verifyUser, upload.array("files"), async (req, res) => {
     const { description, tags, user } = req.body;
     const files = req.files;
 
+    // check if files has only image and pdf
+    const isImageOrPdf = files.every((file) => {
+      // check mime type
+      const isImage = file.mimetype.startsWith("image/");
+      const isPdf = file.mimetype === "application/pdf";
+      return isImage || isPdf;
+    });
+    if (!isImageOrPdf) throw new Error("Only image and pdf files are allowed");
+
     const userDoc = await User.findById(user);
     if (!userDoc) throw new Error("User not found");
 
@@ -134,7 +143,6 @@ router.delete("/delete", verifyUser, async (req, res) => {
     // delete the files from firebase storage
     await Promise.all(
       post.files.map(async (file) => {
-        console.log(file.fileName);
         const storageRef = ref(storage, `${file.fileName}`);
         if (storageRef) {
           await deleteObject(storageRef);
@@ -290,6 +298,30 @@ router.get("/get-user-posts", verifyUser, async (req, res) => {
     res.status(200).json({
       success: true,
       posts,
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.get("/get-post", verifyUser, async (req, res) => {
+  try {
+    const { postId } = req.query;
+
+    const post = await Post.findById(postId)
+      .populate("user", ["name", "avatar"])
+      .populate("tags", ["name"])
+      .populate("comments.user", ["name", "avatar"])
+      .populate("likes.user", ["name", "avatar"]);
+    if (!post) throw new Error("Post not found");
+
+    res.status(200).json({
+      success: true,
+      post,
     });
   } catch (err) {
     console.log(err);
