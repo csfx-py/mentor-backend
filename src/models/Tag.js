@@ -1,9 +1,12 @@
 const mongoose = require("mongoose");
+const Post = require("./Post");
+const User = require("./User");
 
 const TagSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true,
+    unique: true,
   },
   category: {
     type: String,
@@ -15,37 +18,26 @@ const TagSchema = new mongoose.Schema({
 });
 
 // pre delete middleware
-TagSchema.pre("deleteOne", async function (next) {
+TagSchema.pre("deleteMany", async function (next) {
   try {
-    const tag = await this.model.findOne(this.getQuery());
+    const ids = this.getQuery()["_id"]["$in"];
+    console.log(ids);
 
-    const Post = require("./Post");
-    await Post.updateMany(
-      {
-        tags: tag._id,
-      },
-      {
-        $pull: {
-          tags: tag._id,
-        },
-      }
+    // remove tag from posts
+    const posts = await Post.updateMany(
+      { tags: { $in: ids } },
+      { $pull: { tags: { $in: ids } } }
     );
 
-    const User = require("./User");
-    await User.updateMany(
-      {
-        followingTags: tag._id,
-      },
-      {
-        $pull: {
-          followingTags: tag._id,
-        },
-      }
+    // remove tag from users
+    const users = await User.updateMany(
+      { followingTags: { $in: ids } },
+      { $pull: { followingTags: { $in: ids } } }
     );
 
     next();
   } catch (err) {
-    console.log(err);
+    next(err);
   }
 });
 
