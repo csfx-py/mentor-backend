@@ -1,5 +1,4 @@
 const router = require("express").Router();
-const jwt = require("jsonwebtoken");
 const app = require("../config/firebase_config");
 const {
   getStorage,
@@ -44,6 +43,10 @@ router.post(
     try {
       const file = req.file;
       if (!file) throw Error("No file found");
+      // check image type
+      if (file.mimetype !== "image/jpeg" && file.mimetype !== "image/png")
+        throw Error("File type not supported");
+
       const extension = file.originalname.split(".").pop();
 
       const storageRef = ref(
@@ -82,6 +85,12 @@ router.post(
 router.put("/user", verifyUser, async (req, res) => {
   try {
     const { name, email, followingTags } = req.body.details;
+
+    // check if email is dup
+    const validEMail = await User.findOne({ email });
+    if (validEMail && validEMail._id != req.reqUser._id) {
+      throw Error("Email already in use by someone else");
+    }
 
     const user = await User.findOneAndUpdate(
       { _id: req.reqUser._id },
