@@ -180,8 +180,6 @@ router.post("/add-comment", verifyUser, async (req, res) => {
     const newComment = {
       text,
       user,
-      name,
-      avatar,
       date,
     };
 
