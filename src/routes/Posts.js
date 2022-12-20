@@ -1,5 +1,4 @@
 const router = require("express").Router();
-const verifyUser = require("../utils/verifyUser");
 const app = require("../config/firebase_config");
 const {
   getStorage,
@@ -8,6 +7,7 @@ const {
   getDownloadURL,
   deleteObject,
 } = require("firebase/storage");
+const stripe = require("stripe")(process.env.STRIPE_KEY);
 
 const storage = getStorage(app);
 const multer = require("multer");
@@ -18,6 +18,8 @@ const upload = multer({
 const User = require("../models/User");
 const Post = require("../models/Post");
 const Tag = require("../models/Tag");
+
+const verifyUser = require("../utils/verifyUser");
 
 // get all tags
 router.get("/tags", verifyUser, async (req, res) => {
@@ -74,20 +76,88 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
   }
 });
 
+router.post("/purchase", verifyUser, async (req, res) => {
+  try {
+    const user = req.reqUser._id;
+    const { postId } = req.body;
+
+    const post = await Post.findById(postId);
+    if (!post) throw Error("Post not found");
+
+    const { title, price } = post;
+
+    const session = await stripe.checkout.sessions.create({
+      payment_method_types: ["card"],
+      line_items: [
+        {
+          price_data: {
+            currency: "inr",
+            product_data: {
+              name: title,
+            },
+            unit_amount: price * 100,
+          },
+          quantity: 1,
+        },
+      ],
+      mode: "payment",
+      success_url: `http://localhost:3000/success/${postId}/{CHECKOUT_SESSION_ID}`,
+      cancel_url: `http://localhost:3000/cancel`,
+    });
+
+    res.status(200).json({
+      success: true,
+      sessionId: session.id,
+      url: session.url,
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
+router.post("/verify-payment", verifyUser, async (req, res) => {
+  try {
+    const { sessionId, postId } = req.body;
+    console.log(sessionId, postId);
+
+    const session = await stripe.checkout.sessions.retrieve(sessionId);
+    if (!session) throw Error("Session not found");
+
+    const { payment_status } = session;
+    if (payment_status !== "paid") throw Error("Payment not successful");
+
+    const post = await Post.findById(postId);
+    if (!post) throw Error("Post not found");
+
+    const user = req.reqUser._id;
+    const added = await User.findByIdAndUpdate(user, {
+      $addToSet: {
+        paidForPosts: postId,
+      },
+    });
+    if (!added) throw Error("Something went wrong adding the post to user");
+
+    res.status(200).json({
+      success: true,
+      message: "Payment successful",
+    });
+  } catch (err) {
+    res.status(500).json({
+      success: false,
+      error: err.message,
+    });
+  }
+});
+
 // Create a post with multiple pdf files
 router.post("/create", verifyUser, upload.array("files"), async (req, res) => {
   try {
-    const { description, tags, user } = req.body;
-    const files = req.files;
+    const { title, description, tags, user, isPaid, price } = req.body;
 
-    // check if files has only image and pdf
-    const isImageOrPdf = files.every((file) => {
-      // check mime type
-      const isImage = file.mimetype.startsWith("image/");
-      const isPdf = file.mimetype === "application/pdf";
-      return isImage || isPdf;
-    });
-    if (!isImageOrPdf) throw new Error("Only image and pdf files are allowed");
+    const files = req.files;
 
     const userDoc = await User.findById(user);
     if (!userDoc) throw new Error("User not found");
@@ -110,11 +180,16 @@ router.post("/create", verifyUser, upload.array("files"), async (req, res) => {
 
     // create a new post in mongodb
     const post = new Post({
+      title,
       description,
       tags,
       user,
       files: downloadUrls,
+      isPaid,
+      price,
     });
+
+    console.log(post);
 
     // save the post
     const savedPost = await post.save();
@@ -218,6 +293,39 @@ router.delete("/delete-comment", verifyUser, async (req, res) => {
     res.status(200).json({
       success: true,
       message: "Comment deleted successfully",
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
+router.patch("/like-or-dislike", verifyUser, async (req, res) => {
+  try {
+    const { postId } = req.body;
+    const userId = req.reqUser._id;
+    console.log(postId, userId);
+
+    // find and update the post
+    const post = await Post.findById(postId);
+    if (!post) throw new Error("Post not found");
+
+    // check if the post is already liked by the user
+    if (post.likes.filter((like) => like.toString() === userId).length > 0) {
+      post.likes = post.likes.filter((like) => like.toString() !== userId);
+    } else {
+      post.likes.unshift(userId);
+    }
+
+    const savedPost = await post.save();
+    if (!savedPost) throw new Error("Something went wrong saving the post");
+
+    res.status(200).json({
+      success: true,
+      message: "Post liked successfully",
     });
   } catch (err) {
     console.log(err);
