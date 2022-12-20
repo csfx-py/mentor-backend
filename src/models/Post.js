@@ -2,6 +2,10 @@ const mongoose = require("mongoose");
 
 // Post Schema
 const PostSchema = new mongoose.Schema({
+  title: {
+    type: String,
+    required: true,
+  },
   description: {
     type: String,
     required: true,
@@ -54,6 +58,14 @@ const PostSchema = new mongoose.Schema({
       },
     },
   ],
+  isPaid: {
+    type: Boolean,
+    default: false,
+  },
+  price: {
+    type: Number,
+    default: 0,
+  },
   createdAt: {
     type: Date,
     default: Date.now,
