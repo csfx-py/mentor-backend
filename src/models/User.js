@@ -21,6 +21,12 @@ const UserSchema = new mongoose.Schema({
       ref: "Post",
     },
   ],
+  paidForPosts: [
+    {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Post",
+    },
+  ],
   followingTags: [
     {
       type: mongoose.Schema.Types.ObjectId,
