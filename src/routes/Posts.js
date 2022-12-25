@@ -78,7 +78,6 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
 
 router.post("/purchase", verifyUser, async (req, res) => {
   try {
-    const user = req.reqUser._id;
     const { postId } = req.body;
 
     const post = await Post.findById(postId);
@@ -247,7 +246,7 @@ router.delete("/delete", verifyUser, async (req, res) => {
 // route to add comment
 router.post("/add-comment", verifyUser, async (req, res) => {
   try {
-    const { postId, text, user, name, avatar, date } = req.body;
+    const { postId, text, user } = req.body;
 
     const post = await Post.findById(postId);
     if (!post) throw new Error("Post not found");
@@ -255,7 +254,6 @@ router.post("/add-comment", verifyUser, async (req, res) => {
     const newComment = {
       text,
       user,
-      date,
     };
 
     post.comments.unshift(newComment);

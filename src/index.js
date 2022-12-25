@@ -1,6 +1,7 @@
 require("dotenv").config();
+const dev = process.env.NODE_ENV !== "production";
 
-const PORT = process.env.PORT || 5000;
+const PORT = dev ? process.env.PORT || 5000 : process.env.PORT_PROD || 5000;
 
 const express = require("express");
 const app = express();
@@ -17,8 +18,6 @@ const adminRoutes = require("./routes/Admin");
 const postsRoute = require("./routes/Posts");
 const userRoute = require("./routes/User");
 
-const dev = true;
-
 app.use(
   cors(
     dev
@@ -27,7 +26,7 @@ app.use(
           credentials: true,
         }
       : {
-          origin: "https://www.example.com",
+          origin: ["https://www.example.com", "http://localhost:3100"],
           credentials: true,
         }
   )
