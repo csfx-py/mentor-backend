@@ -1,5 +1,4 @@
 require("dotenv").config();
-const dev = process.env.NODE_ENV !== "production";
 
 const PORT = dev ? process.env.PORT || 5000 : process.env.PORT_PROD || 5000;
 

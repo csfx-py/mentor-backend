@@ -6,8 +6,6 @@ const verifyUser = require("../utils/verifyUser");
 
 const User = require("../models/User");
 
-const { dev } = require("../config");
-
 // Register
 router.post("/register", async (req, res) => {
   try {
@@ -41,7 +39,6 @@ router.post("/register", async (req, res) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        domain: dev ? "localhost:3000" : "localhost:3100",
       })
       .status(200)
       .json({
@@ -78,7 +75,6 @@ router.post("/login", async (req, res) => {
     res
       .cookie("token", token, {
         httpOnly: true,
-        domain: dev ? "localhost:3000" : "localhost:3100",
       })
       .status(200)
       .json({
@@ -110,7 +106,6 @@ router.get("/refresh", async (req, res) => {
     res
       .cookie("token", newToken, {
         httpOnly: true,
-        domain: dev ? "localhost:3000" : "localhost:3100",
       })
       .status(200)
       .json({
@@ -133,7 +128,6 @@ router.get("/logout", async (req, res) => {
     res
       .cookie("token", "", {
         httpOnly: true,
-        domain: dev ? "localhost:3000" : "localhost:3100",
         expires: new Date(0),
       })
       .status(200)
