@@ -1,6 +1,6 @@
 require("dotenv").config();
 
-const PORT = dev ? process.env.PORT || 5000 : process.env.PORT_PROD || 5000;
+const PORT = process.env.PORT || 5000;
 
 const express = require("express");
 const app = express();
@@ -18,17 +18,10 @@ const postsRoute = require("./routes/Posts");
 const userRoute = require("./routes/User");
 
 app.use(
-  cors(
-    dev
-      ? {
-          origin: ["http://localhost:3000"],
-          credentials: true,
-        }
-      : {
-          origin: ["https://www.example.com", "http://localhost:3100"],
-          credentials: true,
-        }
-  )
+  cors({
+    origin: ["http://localhost:3000"],
+    credentials: true,
+  })
 );
 app.use(morgan("tiny"));
 app.use(express.json());
@@ -36,7 +29,7 @@ app.use(cookieParser());
 
 // connect mongodb
 mongoose.connect(
-  dev ? process.env.MONGO_LOCAL : process.env.MONGO_URI,
+  process.env.MONGO_LOCAL,
   {
     useNewUrlParser: true,
     useUnifiedTopology: true,
