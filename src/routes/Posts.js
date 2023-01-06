@@ -338,10 +338,22 @@ router.get("/search", verifyUser, async (req, res) => {
   try {
     const { query } = req.query;
 
+    const matchingUsers =
+      (await User.find({
+        name: { $regex: query, $options: "i" },
+      }).select(["name"])) || [];
+
+    const matchingTags =
+      (await Tag.find({
+        name: { $regex: query, $options: "i" },
+      }).select(["name"])) || [];
+
     const posts = await Post.find({
       $or: [
+        { title: { $regex: query, $options: "i" } },
         { description: { $regex: query, $options: "i" } },
-        { tags: { $regex: query, $options: "i" } },
+        { tags: { $in: matchingTags } },
+        { user: { $in: matchingUsers } },
       ],
     })
       .sort({ createdAt: -1 })
@@ -352,7 +364,7 @@ router.get("/search", verifyUser, async (req, res) => {
 
     res.status(200).json({
       success: true,
-      posts: postsWithUser,
+      posts,
     });
   } catch (err) {
     console.log(err);
