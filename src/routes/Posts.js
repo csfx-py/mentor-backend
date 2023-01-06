@@ -359,7 +359,8 @@ router.get("/search", verifyUser, async (req, res) => {
       .sort({ createdAt: -1 })
       .populate("user", ["name", "avatar"])
       .populate("comments.user", ["name", "avatar"])
-      .populate("likes.user", ["name", "avatar"]);
+      .populate("likes.user", ["name", "avatar"])
+      .populate("tags", ["name"]);
     if (!posts) throw new Error("Posts not found");
 
     res.status(200).json({
