@@ -113,4 +113,39 @@ router.put("/user", verifyUser, async (req, res) => {
   }
 });
 
+router.put("/follow", verifyUser, async (req, res) => {
+  try {
+    const { followId } = req.body;
+
+    const followUser = await User.findById(followId);
+    if (!followUser) throw Error("User does not exist");
+
+    const user = await User.findById(req.reqUser._id);
+    if (!user) throw Error("User does not exist");
+
+    // check if already following
+    const isFollowing = user.following.includes(followId);
+
+    if (isFollowing)
+      user.following = user.following.filter((id) => id != followId);
+    else user.following.push(followId);
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: isFollowing
+        ? "Unfollowed successfully"
+        : "Followed successfully",
+      user: getUserReturnInfo(user._doc),
+    });
+  } catch (err) {
+    console.log(err);
+    res.status(400).json({
+      success: false,
+      message: err.message,
+    });
+  }
+});
+
 module.exports = router;
