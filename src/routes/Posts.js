@@ -45,6 +45,9 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
     const followingTags = JSON.parse(req.query.followingTags);
     if (!followingTags) throw Error("No tags found");
 
+    const user = await User.findById(req.reqUser._id);
+    if (!user) throw Error("User not found");
+
     const posts = await Post.find({
       $or: [
         {
@@ -54,6 +57,10 @@ router.get("/get-all-posts", verifyUser, async (req, res) => {
           tags: {
             $in: followingTags,
           },
+        },
+        {
+          // posts by user's following list
+          user: { $in: user.following },
         },
       ],
     })
@@ -405,16 +412,22 @@ router.get("/get-user-posts", verifyUser, async (req, res) => {
   try {
     const { userId } = req.query;
 
-    const posts = await Post.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .populate("user", ["name", "avatar"])
-      .populate("comments.user", ["name", "avatar"])
-      .populate("likes.user", ["name", "avatar"]);
-    if (!posts) throw new Error("Posts not found");
+    console.log(userId);
+
+    const user = await User.findById(userId).populate({
+      path: "posts",
+      populate: [
+        { path: "user", select: ["name", "avatar"] },
+        { path: "comments.user", select: ["name", "avatar"] },
+        { path: "likes.user", select: ["name", "avatar"] },
+        { path: "tags", select: ["name"] },
+      ],
+    });
+    if (!user) throw new Error("Posts not found");
 
     res.status(200).json({
       success: true,
-      posts,
+      user,
     });
   } catch (err) {
     console.log(err);
