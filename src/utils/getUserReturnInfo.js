@@ -8,5 +8,6 @@ module.exports = (userDoc) => {
     avatar: userDoc.avatar,
     role: userDoc.role,
     paidForPosts: userDoc.paidForPosts,
+    following: userDoc.following,
   };
 };
