@@ -57,4 +57,12 @@ const UserSchema = new mongoose.Schema({
   ],
 });
 
+// delete many hook
+UserSchema.pre("deleteMany", async function (next) {
+  // delete all posts by user
+  await mongoose.model("Post").deleteMany({ user: this._conditions._id });
+
+  next();
+});
+
 module.exports = mongoose.model("User", UserSchema);

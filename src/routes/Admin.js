@@ -51,12 +51,12 @@ router.get("/get-all-posts", verifyAdmin, async (req, res) => {
 
 router.delete("/delete-users", verifyAdmin, async (req, res) => {
   try {
-    const { users } = req.body;
-    if (!users) throw new Error("No users to delete");
+    const { userIds } = req.body;
+    if (!userIds) throw new Error("No users to delete");
 
-    const deletedUsers = await User.deleteMany({ _id: { $in: users } });
+    const deletedUsers = await User.deleteMany({ _id: { $in: userIds } });
     if (!deletedUsers) throw new Error("Users could not be deleted");
-    if (deletedUsers.deletedCount !== users.length) {
+    if (deletedUsers.deletedCount !== userIds.length) {
       throw new Error("Some users were not deleted");
     }
 
